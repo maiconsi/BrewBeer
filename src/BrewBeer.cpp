@@ -1,27 +1,4 @@
 #include <Arduino.h>
-
-//libraries
-#include <EEPROM.h>
-#include <LiquidCrystal.h>
-#include <OneWire.h>
-#include <PID_v1.h>
-
-// SETTING PCB*****
-// #include "Pcb_ArdBir_DanielXan.h"
-#include "Pcb_ArdBir_GTO.h"
-
-// Porzioni di codice
-#include "Funzioni.h"
-
-// SETTING LCD*****
-#include "LCD20x4_POR.h"
-
-// Função para utilizar a interrupção em qualquer porta
-#include "AttachInterrupcaoPorta.h"
-
-// inclui biblioteca Timer1
-#include <TimerOne.h> 
-
 // ==============================================
 // ATTENTION!!!!!
 // YOU MUST SET ONLY THIS SECTION
@@ -254,6 +231,29 @@ EEPROM MAP
 #define TestMemoria   false
 /// ------------- ///
 
+
+//libraries
+#include <EEPROM.h>
+#include <LiquidCrystal.h>
+#include <OneWire.h>
+#include <PID_v1.h>
+
+// SETTING PCB*****
+// #include "Pcb_ArdBir_DanielXan.h"
+#include "Pcb_ArdBir_GTO.h"
+
+// Porzioni di codice
+#include "Funzioni.h"
+
+// SETTING LCD*****
+#include "LCD20x4_POR.h"
+
+// Função para utilizar a interrupção em qualquer porta
+#include "AttachInterrupcaoPorta.h"
+
+// inclui biblioteca Timer1
+#include <TimerOne.h> 
+
 // global variables
 unsigned long TimeLeft;
 unsigned long TimeSpent;
@@ -284,9 +284,9 @@ float Temp_Now;
 
 
 byte x;
-byte ScaleTemp       = EEPROM.read(10);
-byte SensorType      = EEPROM.read(11);
-byte UseGAS          = EEPROM.read(0);
+byte ScaleTemp       = EEPROM.read(10);;
+byte SensorType      = EEPROM.read(11);;
+byte UseGAS          = EEPROM.read( 0);
 
 byte stageTime;
 byte hopTime;
@@ -330,6 +330,7 @@ byte RevPumpONOFF[8] = {B11111, B10001, B10101, B10001, B10111, B10111, B10111, 
 // ****************************************
 // ******** start of  the funtions ******** 
 // ****************************************
+
 void Gradi();
 void heat_on();
 void heat_off(boolean mheat);
@@ -365,7 +366,7 @@ void Whirlpool();
 void set_PID();
 void set_Unit(); 
 void set_Stages(); 
-byte Congruita(byte& numRicetta, byte Verso);
+void Congruita(byte& numRicetta, byte Verso);
 void loadRecipe(); 
 void saveRecipe();
 void deleteRecipe();
@@ -375,28 +376,159 @@ void set_hops();
 void TestRam();
 void setup_mode();
 
+void setup() {
+  // Start up the library  
+  #if   SerialMonitor == true
+    Serial.begin(9600);
+  #elif SerialPID     == true
+    Serial.begin(9600);
+  #elif PID_FE        == true
+    Serial.begin(9600);
+  #elif ReadWrite     == true
+    Serial.begin(9600);
+  #endif
+
+  // SETTING LCD*****
+  #if   LCDType == 16
+    lcd.begin(16,2);
+  #elif LCDType == 20
+    lcd.begin(20,4);
+  #endif
+
+  #if SerialPID == true  
+    Serial.println();
+    Serial.println(F("CONTROLLO SPERIMENTALE ATTIVITA' P.I.D."));
+    Serial.print (F("ScaleTemp:  "));
+    if (ScaleTemp == 0)  Serial.println ("C");
+    else                 Serial.println ("F");
+    
+    Serial.print (F("SensorType: "));
+    if (SensorType == 0) Serial.println ("INTERNO");
+    else                 Serial.println ("ESTERNO");
+    
+    Serial.print (F("UseGAS:     "));
+    if (UseGAS == 0)     Serial.println ("ELETTRICO");
+    else                 Serial.println  ("GAS");
+  #endif
+  
+  pinMode (Button_up,    INPUT_PULLUP);
+  pinMode (Button_dn,    INPUT_PULLUP);
+  pinMode (Button_start, INPUT_PULLUP);
+  pinMode (Button_enter, INPUT_PULLUP);
+  pinMode (Heat, OUTPUT);
+  pinMode (Pump, OUTPUT);
+  pinMode (Buzz, OUTPUT);
+  pinMode (HeatLed, OUTPUT);
+  //w_StartTime = millis();
+
+  // Inicializa interrupção. O número zero indica a porta 10 do Arduino,
+  // zero_crosss_int é a função que será chamada toda vez que o pino 2
+  // "subir" (RISING) de valor de 0 para 1.  
+  PCattachInterrupt(ZeroCross, zero_crosss_int, RISING);
+  
+  // Initialize the interruption time Timer1
+  Timer1.initialize(); // Initialize TimerOne library for the freq we need
+  
+  //tell the PID to range between 0 and the full window size
+  myPID.SetMode(AUTOMATIC);
+
+  allOFF();
+ 
+  //if (ScaleTemp == 0) boilStageTemp = EEPROM.read(12);
+  //else                boilStageTemp = EEPROM.read(13);
+  
+  //if (ScaleTemp == 0) boilStageTemp = ((r_set_float(12) - 32) / 1.8);
+  //else                boilStageTemp = ((r_set_float(13) * 1.8) + 32) ;
+
+  if (ScaleTemp == 0) boilStageTemp = r_set(12);
+  else                boilStageTemp = r_set(13);
+
+  Serial.print("boilStageTemp: ");
+  Serial.println(boilStageTemp);
+  
+//  Sprite screen
+//  ArdBir();
+  
+  Gradi();
+  // write custom symbol to LCD
+  //lcd.createChar(0, deg);        // Celsius
+  //lcd.createChar(1, degF);       // Faherenheit
+  lcd.createChar(2, SP_Symbol);    // Set Point
+  lcd.createChar(3, PumpONOFF);    // Pump
+  lcd.createChar(4, RevPumpONOFF); // Pump
+  lcd.createChar(5, HeatONOFF);    // Resistor ON-OFF
+  lcd.createChar(6, RevHeatONOFF); // Heat On-OFF
+  lcd.createChar(7, Language);     // Language Symbol 
+}
+
+void loop() {
+  //boolean StartNow = false;
+    
+  pumpTime   = 0;
+  TimeSpent  = 0;
+  TimeLeft   = 0;
+  
+  IodineTest = false;
+ 
+  switch(mainMenu) {
+
+    case (1):
+    Menu_1();
+    manual_mode();
+    mainMenu = 0;
+    break;
+
+    case (2):
+    Menu_2();
+    
+    PartenzaRitardata();
+    //wait_for_confirm(StartNow, 2, 2, 2);
+    
+    if (!(wait_for_confirm(2, 2, 2))) DelayedMode = true;
+    
+    Menu_2();
+    auto_mode(); 
+    mainMenu = 0;
+    break;
+
+    case (3):   
+    Menu_3();
+    setup_mode();
+    mainMenu = 0;    
+    break;
+
+    case (4):
+    #if TestMemoria == true
+      Menu_4();
+      TestRam();
+      mainMenu = 0;    
+      break;
+    #endif
+
+
+  default: 
+    DelayedMode = false;
+    mheat =       false;
+    mpump =       false;  
+    
+    allOFF();
+    
+    Temperature();
+    LCD_Default(Temp_Now);
+
+    if (btn_Press(Button_dn, 500))    mainMenu = 1;
+    if (btn_Press(Button_start, 500)) mainMenu = 2;
+    if (btn_Press(Button_enter, 500)) mainMenu = 3;
+    #if TestMemoria == true
+      if (btn_Press(Button_up, 2500)) mainMenu = 4;
+    #endif  
+    break;    
+  }
+}
+
 void Gradi() {
   if (ScaleTemp == 0) lcd.createChar(0, degC); // Celsius  
   else                lcd.createChar(0, degF); // Faherenheit
-}
-
-void heat_on() {
-  digitalWrite(HeatLed, HIGH);
-  ledHeatON();
-}
-
-void heat_off(boolean mheat) {
-  if (mheat) {
-     digitalWrite (HeatLed, HIGH);
-  } else {
-     digitalWrite (HeatLed, LOW);
-  }
-  ledHeatStatus(mheat);
-}
-
-void allOFF() {
-  heat_off(mheat);
-  pump_off(mpump);
 }
 
 void pauseStage(){
@@ -667,9 +799,10 @@ void load_pid_settings () {
   
   //myPID.SetSampleTime(SampleTime * 250);
   myPID.SetSampleTime(r_set(4) * 250);
+  
 }  
 
-boolean wait_for_confirm(byte Stato, byte Tipo, byte Display) { 
+boolean wait_for_confirm (byte Stato, byte Tipo, byte Display) { 
   // Stato   == 1 Pause with    PID
   // Stato   == 2 Pause without PID
   
@@ -735,6 +868,26 @@ void quit_mode (boolean& processLoop) {
   }
 }
 
+void allOFF() {
+  heat_off(mheat);
+  pump_off(mpump);
+}
+
+void heat_on() {
+  digitalWrite(HeatLed, HIGH);
+  ledHeatON();
+}
+
+void heat_off(boolean mheat) {
+  if (mheat) {
+     digitalWrite (HeatLed, HIGH);
+  } else {
+     digitalWrite (HeatLed, LOW);
+  }
+  ledHeatStatus(mheat);
+}
+
+
 void heat_control() {
   //turns heat on or off      
   if (btn_Press(Button_start, 50)) {
@@ -795,9 +948,7 @@ void pump_rest (byte stage) {
   
   
   //mpump = true;
-  if ((stage == 0) && (PumpPreMash == 0) || 
-      (stage > 0) && (stage < 7) && (PumpOnMash == 0) || 
-      (stage == 7) && (PumpOnMashOut == 0)) { 
+  if (stage == 0 && PumpPreMash == 0 || stage > 0 && stage < 7 && PumpOnMash == 0 || stage == 7 && PumpOnMashOut == 0) { 
     pump_off(true);
     return;
   }
@@ -957,6 +1108,8 @@ void hop_add () {
   } 
 }
 
+
+
 void stage_loop () {  
   byte lastminute;
   boolean tempBoilReached = false;
@@ -1099,7 +1252,10 @@ void add_malt () {
 }
 
 void Iodine_Test () {
+  // byte IodineTime   = r_set(26);
   byte TempoRimasto = stageTime;
+  
+  //r_set(IodineTime, 26);
   
   boolean Test = true;
   
@@ -1177,6 +1333,7 @@ void remove_malt () {
     b_Enter  = false;
   }
 }
+
 
 void manual_mode () {
   float mset_temp;
@@ -1381,7 +1538,7 @@ void auto_mode () {
   
   if (UseGAS == 0) load_pid_settings();
 
-  //  check_for_resume();
+//  check_for_resume();
   
   //if (AutoMode) { // FLAG Automode Started
   if (r_set(84)) { // FLAG Automode Started
@@ -2043,16 +2200,24 @@ void set_Stages () {
 }  
 
 
-byte Congruita(byte& numRicetta, byte Verso) {  
+void Congruita(byte& numRicetta, byte Verso) {  
   if (EEPROM.read(89 + numRicetta) == 0) {
     boolean Controllo = true;
     
     while(Controllo) {
-      if (Verso == 1) if (numRicetta < 10) numRicetta++;
-      else Controllo = false; 
+      if (Verso == 1) {
+        if (numRicetta < 10) 
+          numRicetta++;
+        else 
+          Controllo = false; 
+      }
         
-      if (Verso == 2) if (numRicetta > 1) numRicetta--;
-      else            Controllo = false;
+      if (Verso == 2) {
+        if (numRicetta > 1) 
+          numRicetta--;
+        else            
+          Controllo = false;
+      }
       
       if (EEPROM.read(89 + numRicetta) == 1) { 
         Controllo = false;
@@ -2080,7 +2245,7 @@ void loadRecipe() {
     return;
   }
   
-  byte NomeRicetta[10];
+  // byte NomeRicetta[10];
   byte pos = 0; 
   
   for (byte i = RicettaDwn + 89; i < RicettaUp + 89 + 1; i++) {//Trova la prima ricetta libera
@@ -2120,6 +2285,7 @@ void loadRecipe() {
     }
   }
 }
+
 
 void saveRecipe() {
   //boolean saverecipeLoop;
@@ -2321,6 +2487,7 @@ void RecipeMenu() {
   }Menu_3_4();
 }
 
+
 void set_hops () {
   boolean hopLoop;
   byte hopSet;
@@ -2402,11 +2569,14 @@ void set_hops () {
   Clear_2_3();
 }
 
+
+
 void TestRam() {  
-  #if TestMemoria == true
-    Menu_4_1();
-  #endif
+#if TestMemoria == true
+  Menu_4_1();
+#endif
 }
+
 
 void setup_mode () {
   boolean setupLoop = true;
@@ -2447,119 +2617,3 @@ void setup_mode () {
     }
   } lcd.clear();
 }   
-
-void setup() {
-  // Start up the library  
- // Serial.begin(9600);
-
-  // SETTING LCD*****
-  #if   LCDType == 16
-    lcd.begin(16,2);
-  #elif LCDType == 20
-    lcd.begin(20,4);
-  #endif
-  
-  pinMode (Button_up,    INPUT_PULLUP);
-  pinMode (Button_dn,    INPUT_PULLUP);
-  pinMode (Button_start, INPUT_PULLUP);
-  pinMode (Button_enter, INPUT_PULLUP);
-  pinMode (Heat, OUTPUT);
-  pinMode (Pump, OUTPUT);
-  pinMode (Buzz, OUTPUT);
-  pinMode (HeatLed, OUTPUT);
-  //w_StartTime = millis();
-
-  // Inicializa interrupção. O número zero indica a porta 10 do Arduino,
-  // zero_crosss_int é a função que será chamada toda vez que o pino 2
-  // "subir" (RISING) de valor de 0 para 1.  
-  PCattachInterrupt(ZeroCross, zero_crosss_int, RISING);
-  
-  // Initialize the interruption time Timer1
-  Timer1.initialize(); // Initialize TimerOne library for the freq we need
-  
-  //tell the PID to range between 0 and the full window size
-  myPID.SetMode(AUTOMATIC);
-
-  allOFF();
-  
-  if (ScaleTemp == 0) boilStageTemp = ((r_set_float(12) - 32) / 1.8);
-  else                boilStageTemp = ((r_set_float(13) * 1.8) + 32) ;
-
-  //  Sprite screen
-  Gradi();
-
-  // write custom symbol to LCD
-  //lcd.createChar(0, deg);        // Celsius
-  //lcd.createChar(1, degF);       // Faherenheit
-  lcd.createChar(2, SP_Symbol);    // Set Point
-  lcd.createChar(3, PumpONOFF);    // Pump
-  lcd.createChar(4, RevPumpONOFF); // Pump
-  lcd.createChar(5, HeatONOFF);    // Resistor ON-OFF
-  lcd.createChar(6, RevHeatONOFF); // Heat On-OFF
-  lcd.createChar(7, Language);     // Language Symbol 
-}
-
-void loop() {
-  //boolean StartNow = false;
-    
-  pumpTime   = 0;
-  TimeSpent  = 0;
-  TimeLeft   = 0;
-  
-  IodineTest = false;
- 
-  switch(mainMenu) {
-
-    case (1):
-    Menu_1();
-    manual_mode();
-    mainMenu = 0;
-    break;
-
-    case (2):
-    Menu_2();
-    
-    PartenzaRitardata();
-    //wait_for_confirm(StartNow, 2, 2, 2);
-    
-    if (!(wait_for_confirm(2, 2, 2))) DelayedMode = true;
-    
-    Menu_2();
-    auto_mode(); 
-    mainMenu = 0;
-    break;
-
-    case (3):   
-    Menu_3();
-    setup_mode();
-    mainMenu = 0;    
-    break;
-
-    case (4):
-    #if TestMemoria == true
-      Menu_4();
-      TestRam();
-      mainMenu = 0;    
-      break;
-    #endif
-
-
-  default: 
-    DelayedMode = false;
-    mheat =       false;
-    mpump =       false;  
-    
-    allOFF();
-    
-    Temperature();
-    LCD_Default(Temp_Now);
-
-    if (btn_Press(Button_dn, 500))    mainMenu = 1;
-    if (btn_Press(Button_start, 500)) mainMenu = 2;
-    if (btn_Press(Button_enter, 500)) mainMenu = 3;
-    #if TestMemoria == true
-      if (btn_Press(Button_up, 2500)) mainMenu = 4;
-    #endif  
-    break;    
-  }
-}

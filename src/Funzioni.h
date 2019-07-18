@@ -68,10 +68,10 @@ float r_set_float(int addr){
     Serial.print (F("R-> "));
     Serial.print (addr);
     Serial.print (F(" float: "));
-    Serial.println (float(EEPROM.read(addr),EEPROM.read(addr+1))); 
+    Serial.println (word(EEPROM.read(addr),EEPROM.read(addr+1))); 
   #endif
   
-  return float(EEPROM.read(addr),EEPROM.read(addr+1));
+  return word(EEPROM.read(addr),EEPROM.read(addr+1));
 }
 
 double r_set_double(int addr){ 
@@ -143,7 +143,7 @@ byte btn_Repeat (byte Button_press){
   return 0;
 }
 
-byte LeggiPulsante(byte& Verso, unsigned long& Timer ){	
+void LeggiPulsante(byte& Verso, unsigned long& Timer ){	
   // Verso=1 UP
   // Verso=2 DWN
   
@@ -178,6 +178,8 @@ float Arrotonda025(float& Num){
   
   // Arrotondo il valore con peso 0.25
   Num=Appoggio+int((Num-Appoggio)*1000/225)*0.25;
+
+  return Num;
 }
 
 float ConvertiCtoF(float& Num){        
@@ -185,6 +187,8 @@ float ConvertiCtoF(float& Num){
   Num = (Num*1.8)+32;          // Converto in °F
   Arrotonda025(Num);
   Num = Num*16;              // Preparo il valore per la registrazione
+   
+  return Num;             
 }
 
 float ConvertiFtoC(float& Num){
@@ -192,6 +196,8 @@ float ConvertiFtoC(float& Num){
   Num = (Num-32)/1.8;            // Converto in °C
   Arrotonda025(Num);
   Num = Num*16;              // Preparo il valore per la registrazione
+
+  return Num;
 }
 
 int Set(int& Set, int Up, int Low, int Step, long Timer, byte Verso){

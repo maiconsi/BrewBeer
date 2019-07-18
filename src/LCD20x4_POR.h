@@ -164,7 +164,7 @@ void SaltoStep(){
 
 void RemoveMalt(){
   lcd.setCursor(3,2);
-  lcd.print(F("Eliminar Malte"));
+  lcd.print(F("Eliminar  Malte "));
   LCD_Procedo();
 }
 
@@ -674,13 +674,13 @@ void Iodine(float Temp, int Time){
 
 void End(){
   lcd.clear();
-
-  Buzzer(1,3000);
   
   lcd.setCursor(4,1);
   lcd.print(F("Sua cerveja"));
-  lcd.setCursor(5,2);
+  lcd.setCursor(4,2);
   lcd.print(F("esta pronta!"));
+
+  Buzzer(1,3000);
   
   delay(2500);
 }
