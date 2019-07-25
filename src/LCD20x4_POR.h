@@ -36,7 +36,7 @@ void Version(byte locX, byte locY){
 
 void Intestazione(){ 
   lcd.setCursor(0,0);
-  lcd.print(F("BREW BEER ArdBir "));
+  lcd.print(F("Bit4Beer  ArdBir ")); 
   Version(17,0);
 }
 
