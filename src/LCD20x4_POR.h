@@ -30,14 +30,14 @@ void Clear_2_3(){
 
 void Version(byte locX, byte locY){
   lcd.setCursor(locX, locY);
-  lcd.print(F("v2"));
+  lcd.print(F("v2.1 "));
   lcd.write(7);
 }
 
 void Intestazione(){ 
-  lcd.setCursor(0,0);
-  lcd.print(F("Bit4Beer  ArdBir ")); 
-  Version(17,0);
+  lcd.setCursor(0,0);    
+  lcd.print(F("MashBeer  Cervejeiro")); 
+ // Version(14,0);
 }
 
 void LCD_Procedo(){
