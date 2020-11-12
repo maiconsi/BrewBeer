@@ -200,7 +200,7 @@ float ConvertiFtoC(float& Num){
   return Num;
 }
 
-int Set(int& Set, int Up, int Low, int Step, long Timer, byte Verso){
+void Set(int& Set, int Up, int Low, int Step, long Timer, byte Verso){
   int step_size;
   int ControllaPulsante;
   
@@ -231,7 +231,7 @@ int Set(int& Set, int Up, int Low, int Step, long Timer, byte Verso){
   }   
 }
 
-float Set(float& Set, float Up, float Low, float Step, long Timer, byte Verso){
+void Set(float& Set, float Up, float Low, float Step, long Timer, byte Verso){
   float step_size;
   int ControllaPulsante;
 
@@ -262,7 +262,7 @@ float Set(float& Set, float Up, float Low, float Step, long Timer, byte Verso){
   }   
 }
 
-byte Set(byte& Set, byte Up, byte Low, byte Step, long Timer, byte Verso){
+void Set(byte& Set, byte Up, byte Low, byte Step, long Timer, byte Verso){
   int step_size;
   int ControllaPulsante;
 
